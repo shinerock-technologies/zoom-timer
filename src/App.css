@@ -44,6 +44,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .room-name.clickable:hover {
@@ -101,9 +104,25 @@
   margin-bottom: 2px;
 }
 
-.room-picker-count {
+.room-picker-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   color: #888;
+}
+
+.room-picker-count {
+  color: #888;
+}
+
+.room-picker-separator {
+  color: #555;
+}
+
+.room-picker-time {
+  color: #2d8cff;
+  font-weight: 600;
 }
 
 .room-picker-delete {
@@ -125,6 +144,21 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.room-total-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: rgba(45, 140, 255, 0.15);
+  border: 1px solid rgba(45, 140, 255, 0.3);
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2d8cff;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .room-name-edit-btn {
@@ -429,23 +463,37 @@
 }
 
 .add-button.combined {
-  background: #2d8cff;
-  color: #ffffff;
-  border-radius: 8px;
-  font-size: 2rem;
-  font-weight: 400;
-  padding-bottom: 2px;
-  box-shadow: 0 2px 8px rgba(45, 140, 255, 0.3);
+  background: #2d2d2d;
+  color: #2d8cff;
+  border: 1px solid #3d3d3d;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0 12px;
+  height: 40px;
+  width: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .add-button.combined:hover {
-  background: #1a73e8;
+  background: #2d8cff;
+  color: #ffffff;
+  border-color: #2d8cff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(45, 140, 255, 0.4);
 }
 
 .add-button.combined:active {
   transform: translateY(0);
+}
+
+.new-room-text {
+  display: inline;
+}
+
+.new-room-icon {
+  display: none;
 }
 
 .ai-dropdown {
@@ -453,27 +501,32 @@
 }
 
 .ai-button {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  color: #ffffff;
-  font-size: 1.3rem;
+  background: #2d2d2d;
+  border: 1px solid #3d3d3d;
+  color: #888;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0;
-  padding-bottom: 2px;
-  width: 40px;
+  padding: 0 12px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  gap: 6px;
+  border-radius: 6px;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   line-height: 1;
 }
 
+.ai-button-text {
+  display: inline;
+}
+
 .ai-button:hover {
+  background: #3d3d3d;
+  color: #2d8cff;
+  border-color: #2d8cff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .ai-menu {
@@ -755,30 +808,30 @@
   background: #2d2d2d;
   border: 1px solid #3d3d3d;
   color: #2d8cff;
-  font-size: 1.5rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
+  padding: 6px 12px;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .add-button-small:hover {
   background: #2d8cff;
   color: #ffffff;
   border-color: #2d8cff;
-  transform: scale(1.05);
+  transform: translateY(-1px);
 }
 
 .up-next-section .timer-card {
   background: transparent;
-  padding: 12px 8px 12px 4px;
-  margin: 0;
+  padding: 12px 12px 12px 4px;
+  margin: 0 8px 0 0;
   border-radius: 0;
   border: none;
   border-bottom: 1px solid #2d2d2d;
@@ -1298,6 +1351,246 @@
   .welcome-icon {
     font-size: 3rem;
   }
+}
+
+/* AI Prompt Modal */
+.ai-prompt-modal {
+  max-width: 500px;
+}
+
+.ai-prompt-content {
+  padding: 24px;
+}
+
+.ai-prompt-header {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.ai-prompt-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 8px 0;
+}
+
+.ai-prompt-description {
+  font-size: 0.9rem;
+  color: #888;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-prompt-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: #2d2d2d;
+  border: 2px solid #3d3d3d;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.ai-prompt-input:focus {
+  border-color: #2d8cff;
+}
+
+.ai-prompt-input::placeholder {
+  color: #666;
+}
+
+.ai-prompt-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-prompt-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 6px;
+  color: #f44336;
+  font-size: 0.9rem;
+}
+
+.ai-prompt-examples {
+  margin-top: 16px;
+}
+
+.ai-prompt-examples-label {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-prompt-examples-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-prompt-example {
+  padding: 6px 12px;
+  background: #2d2d2d;
+  border: 1px solid #3d3d3d;
+  border-radius: 16px;
+  color: #888;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-prompt-example:hover:not(:disabled) {
+  background: #3d3d3d;
+  color: #2d8cff;
+  border-color: #2d8cff;
+}
+
+.ai-prompt-example:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-prompt-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.ai-prompt-cancel,
+.ai-prompt-generate {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-prompt-cancel {
+  background: transparent;
+  color: #888;
+}
+
+.ai-prompt-cancel:hover:not(:disabled) {
+  background: #2d2d2d;
+  color: #ffffff;
+}
+
+.ai-prompt-generate {
+  background: #2d8cff;
+  color: #ffffff;
+}
+
+.ai-prompt-generate:hover:not(:disabled) {
+  background: #1a73e8;
+}
+
+.ai-prompt-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Undo Notification */
+.undo-notification {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+.undo-content {
+  background: #2d2d2d;
+  border: 1px solid #3d3d3d;
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.undo-message {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.undo-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.undo-button {
+  border: none;
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.undo-revert {
+  background: #3d3d3d;
+  color: #ffffff;
+  border: 1px solid #4d4d4d;
+}
+
+.undo-revert:hover {
+  background: #4d4d4d;
+  transform: translateY(-1px);
+}
+
+.undo-keep {
+  background: #2d8cff;
+  color: #ffffff;
+}
+
+.undo-keep:hover {
+  background: #1a73e8;
+  transform: translateY(-1px);
+}
+
+.experimental-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(255, 152, 0, 0.15);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ff9800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* Overlay/Sharing Mode */
@@ -1864,5 +2157,46 @@
 
   .alerts-label {
     font-size: 12px;
+  }
+
+  /* Mobile navigation adjustments */
+  .room-name {
+    font-size: 0.95rem;
+    padding: 4px 8px;
+    max-width: 150px;
+  }
+
+  .room-total-time-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+  }
+
+  .ai-button-text {
+    display: none;
+  }
+
+  .ai-button {
+    padding: 0;
+    width: 40px;
+    font-size: 1.2rem;
+  }
+
+  .new-room-text {
+    display: none;
+  }
+
+  .new-room-icon {
+    display: inline;
+  }
+
+  .add-button.combined {
+    padding: 0;
+    width: 40px;
+    font-size: 1.5rem;
+    justify-content: center;
+  }
+
+  .header-right {
+    gap: 8px;
   }
 }

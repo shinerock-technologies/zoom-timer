@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import zoomSdk from "@zoom/appssdk";
 import Timer from "./components/Timer";
 import AddTimer from "./components/AddTimer";
+import AIPromptModal from "./components/AIPromptModal";
 import { generateUUID } from "./utils/uuid";
+import { generateTimerRoom, editRoomWithAI } from "./services/openai";
 import "./App.css";
 
 function App() {
@@ -24,9 +26,15 @@ function App() {
   const [showNewRoomModal, setShowNewRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [showAIRoomModal, setShowAIRoomModal] = useState(false);
+  const [showAITimerModal, setShowAITimerModal] = useState(false);
+  const [undoState, setUndoState] = useState(null);
+  const [showUndoNotification, setShowUndoNotification] = useState(false);
   const roomPickerRef = useRef(null);
   const roomNameInputRef = useRef(null);
   const newRoomInputRef = useRef(null);
+  const aiMenuRef = useRef(null);
+  const templatesMenuRef = useRef(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -173,6 +181,43 @@ function App() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showRoomPicker]);
+
+  // Close AI menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (aiMenuRef.current && !aiMenuRef.current.contains(event.target)) {
+        setShowAIMenu(false);
+      }
+    };
+
+    if (showAIMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showAIMenu]);
+
+  // Close templates menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        templatesMenuRef.current &&
+        !templatesMenuRef.current.contains(event.target)
+      ) {
+        setShowTemplates(false);
+      }
+    };
+
+    if (showTemplates) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showTemplates]);
 
   // Handle keyboard shortcuts for room name editing
   useEffect(() => {
@@ -480,6 +525,106 @@ function App() {
     setNewRoomName("");
   };
 
+  const handleGenerateTimerRoom = async (prompt) => {
+    // Save current state for undo
+    setUndoState({
+      timers: [...timers],
+      roomName,
+      roomId,
+    });
+
+    const result = await generateTimerRoom(prompt);
+
+    // Create timers from AI response
+    const newTimers = result.timers.map((t) => ({
+      id: generateUUID(),
+      title: t.title,
+      message: t.message || "",
+      totalSeconds: t.seconds,
+      remainingSeconds: t.seconds,
+      isRunning: false,
+      notificationsEnabled: true,
+      alerts: [],
+      triggeredAlerts: [],
+    }));
+
+    setTimers(newTimers);
+    setRoomName(result.roomName);
+    setRoomId(generateUUID());
+    setHasInteracted(true);
+    localStorage.setItem("hasInteracted", "true");
+    setShowAIRoomModal(false);
+    setShowAIMenu(false);
+    showUndoToast();
+  };
+
+  const handleEditRoomWithAI = async (prompt) => {
+    // Save current state for undo
+    setUndoState({
+      timers: [...timers],
+      roomName,
+      roomId,
+    });
+
+    const currentRoomData = {
+      roomName,
+      timers: timers.map((t) => ({
+        title: t.title,
+        message: t.message,
+        totalSeconds: t.totalSeconds,
+      })),
+    };
+
+    const result = await editRoomWithAI(prompt, currentRoomData);
+
+    // Convert AI response to timer objects with UUIDs
+    const updatedTimers = result.timers.map((t) => ({
+      id: generateUUID(),
+      title: t.title,
+      message: t.message || "",
+      totalSeconds: t.seconds,
+      remainingSeconds: t.seconds,
+      isRunning: false,
+      notificationsEnabled: true,
+      alerts: [],
+      triggeredAlerts: [],
+    }));
+
+    setTimers(updatedTimers);
+    setShowAITimerModal(false);
+    setShowAIMenu(false);
+    showUndoToast();
+  };
+
+  const handleUndo = () => {
+    if (undoState) {
+      setTimers(undoState.timers);
+      setRoomName(undoState.roomName);
+      setRoomId(undoState.roomId);
+      setUndoState(null);
+      setShowUndoNotification(false);
+      // TODO: Send negative feedback to training system
+      console.log("User undid AI changes - negative feedback");
+    }
+  };
+
+  const handleKeepChanges = () => {
+    setUndoState(null);
+    setShowUndoNotification(false);
+    // TODO: Send positive feedback to training system
+    console.log("User kept AI changes - positive feedback");
+  };
+
+  const showUndoToast = () => {
+    setShowUndoNotification(true);
+    // Auto-hide after 15 seconds
+    setTimeout(() => {
+      if (showUndoNotification) {
+        handleKeepChanges();
+      }
+    }, 15000);
+  };
+
   useEffect(() => {
     async function configureZoomApp() {
       try {
@@ -649,6 +794,23 @@ function App() {
     return `${mins}:${String(secs).padStart(2, "0")}`;
   };
 
+  const formatCompactTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    if (mins > 0) {
+      return `${mins}m`;
+    }
+    return `${seconds}s`;
+  };
+
+  const getRoomTotalTime = (roomTimers) => {
+    return roomTimers.reduce((total, timer) => total + timer.totalSeconds, 0);
+  };
+
   const hasRunningTimer = timers.some((t) => t.isRunning);
 
   // Active timer is the first one with time remaining (or the running one)
@@ -792,6 +954,11 @@ function App() {
               </div>
             ) : (
               <div className="room-name-display">
+                {timers.length > 0 && (
+                  <div className="room-total-time-badge">
+                    ⏱ {formatCompactTime(getTotalTime())}
+                  </div>
+                )}
                 <h1
                   className="room-name clickable"
                   onClick={() => {
@@ -827,8 +994,14 @@ function App() {
                       onClick={() => loadSavedRoom(room)}>
                       <div className="room-picker-content">
                         <div className="room-picker-name">{room.roomName}</div>
-                        <div className="room-picker-count">
-                          {room.timers.length} timers
+                        <div className="room-picker-meta">
+                          <span className="room-picker-count">
+                            {room.timers.length} timers
+                          </span>
+                          <span className="room-picker-separator">•</span>
+                          <span className="room-picker-time">
+                            {formatCompactTime(getRoomTotalTime(room.timers))}
+                          </span>
                         </div>
                       </div>
                     </button>
@@ -848,35 +1021,46 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          <div className="ai-dropdown">
+          <div className="ai-dropdown" ref={aiMenuRef}>
             <button
               className="ai-button"
               onClick={() => {
                 setShowAIMenu(!showAIMenu);
                 setShowTemplates(false);
               }}>
-              ✨
+              ✨<span className="ai-button-text">AI</span>
             </button>
 
             {showAIMenu && (
               <div className="template-menu ai-menu">
-                <button className="template-item ai-generate">
-                  <span className="template-item-icon">⏱️</span>
+                <button
+                  className="template-item ai-generate"
+                  onClick={() => {
+                    setShowAIRoomModal(true);
+                    setShowAIMenu(false);
+                  }}>
+                  <span className="template-item-icon">🏠</span>
                   <div className="template-item-content">
-                    <div className="template-item-name">Generate Timer</div>
+                    <div className="template-item-name">Generate with AI</div>
                     <div className="template-item-count">
-                      Ask AI for single timer
+                      Create multiple timers from description
                     </div>
                   </div>
                 </button>
-                <button className="template-item ai-generate">
-                  <span className="template-item-icon">🏠</span>
+                <button
+                  className="template-item ai-generate"
+                  onClick={() => {
+                    setShowAITimerModal(true);
+                    setShowAIMenu(false);
+                  }}>
+                  <span className="template-item-icon">⏱️</span>
                   <div className="template-item-content">
                     <div className="template-item-name">
-                      Generate Timer Room
+                      Edit with AI
+                      <span className="experimental-badge">Experimental</span>
                     </div>
                     <div className="template-item-count">
-                      Ask AI for multiple timers
+                      Add, modify, or remove timers
                     </div>
                   </div>
                 </button>
@@ -884,14 +1068,15 @@ function App() {
             )}
           </div>
 
-          <div className="template-dropdown">
+          <div className="template-dropdown" ref={templatesMenuRef}>
             <button
               className="add-button combined"
               onClick={() => {
                 setShowTemplates(!showTemplates);
                 setShowAIMenu(false);
               }}>
-              +
+              <span className="new-room-text">New Room</span>
+              <span className="new-room-icon">+</span>
             </button>
 
             {showTemplates && (
@@ -1049,7 +1234,7 @@ function App() {
                 <button
                   className="add-button-small"
                   onClick={() => setShowModal(true)}>
-                  +
+                  Add Timer
                 </button>
               </div>
               {timers.map((timer, index) => (
@@ -1134,6 +1319,40 @@ function App() {
                   Create Room
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAIRoomModal && (
+        <AIPromptModal
+          type="room"
+          onClose={() => setShowAIRoomModal(false)}
+          onGenerate={handleGenerateTimerRoom}
+        />
+      )}
+
+      {showAITimerModal && (
+        <AIPromptModal
+          type="edit"
+          onClose={() => setShowAITimerModal(false)}
+          onGenerate={handleEditRoomWithAI}
+        />
+      )}
+
+      {showUndoNotification && undoState && (
+        <div className="undo-notification">
+          <div className="undo-content">
+            <span className="undo-message">AI changes applied</span>
+            <div className="undo-actions">
+              <button className="undo-button undo-revert" onClick={handleUndo}>
+                Undo
+              </button>
+              <button
+                className="undo-button undo-keep"
+                onClick={handleKeepChanges}>
+                Keep
+              </button>
             </div>
           </div>
         </div>
