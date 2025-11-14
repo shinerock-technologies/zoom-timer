@@ -111,6 +111,9 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
                 type="submit"
                 className="ai-prompt-generate"
                 disabled={isGenerating || !prompt.trim()}>
+                {isGenerating && (
+                  <span className="spinner" aria-hidden="true"></span>
+                )}
                 {isGenerating ? "Generating..." : "Generate"}
               </button>
             </div>
