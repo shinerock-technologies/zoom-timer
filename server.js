@@ -50,7 +50,11 @@ Rules:
       const timersList = currentRoom.timers
         .map(
           (t, i) =>
-            `${i + 1}. "${t.title}" - ${Math.floor(t.totalSeconds / 60)}:${String(t.totalSeconds % 60).padStart(2, "0")} (${t.message || "no description"})`
+            `${i + 1}. "${t.title}" - ${Math.floor(
+              t.totalSeconds / 60
+            )}:${String(t.totalSeconds % 60).padStart(2, "0")} (${
+              t.message || "no description"
+            })`
         )
         .join("\n");
 
@@ -83,6 +87,7 @@ Examples:
 - "sales pitch" → timers for intro, problem, solution, demo, pricing, Q&A, close
 - "morning routine" → timers for exercise, shower, breakfast, planning
 - "team meeting" → timers for check-in, updates, discussion, action items`;
+  }
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

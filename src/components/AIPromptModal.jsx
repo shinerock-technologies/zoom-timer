@@ -4,11 +4,31 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [loadingMessage, setLoadingMessage] = useState(0);
   const inputRef = useRef(null);
+
+  const loadingMessages = [
+    "Starting engine...",
+    "Sprinkling magic...",
+    "Consulting the AI Oracle",
+    "Brewing timers...",
+    "Crafting magic...",
+    "Almost there...",
+  ];
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    const interval = setInterval(() => {
+      setLoadingMessage((prev) => (prev + 1) % loadingMessages.length);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,7 +134,7 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
                 {isGenerating && (
                   <span className="spinner" aria-hidden="true"></span>
                 )}
-                {isGenerating ? "Generating..." : "Generate"}
+                {isGenerating ? loadingMessages[loadingMessage] : "Generate"}
               </button>
             </div>
           </form>
