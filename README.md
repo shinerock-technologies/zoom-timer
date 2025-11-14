@@ -19,10 +19,6 @@ The server is already running at http://localhost:3000
 
 4. **App Credentials** section:
 
-   - Your Client ID: `EBT17M2BSE2cGlEJw_ydjg`
-   - Your Client Secret: `24xdloN03An8uQqIERxOmV9oqMXPdyEo`
-   - Add Redirect URL: `http://localhost:3000`
-
 5. **Features** section:
 
    - Enable "In-Meeting" capability
@@ -65,8 +61,13 @@ The server is already running at http://localhost:3000
 npm run dev    # Start development server
 npm run build  # Build for production
 ```
+
 # zoom-timer
+
 # zoom-timer
+
 # zoom-timer
+
 # zoom-timer
+
 # zoom-timer
