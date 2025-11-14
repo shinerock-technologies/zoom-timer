@@ -1,0 +1,6 @@
+{
+  "clientId": "EBT17M2BSE2cGlEJw_ydjg",
+  "clientSecret": "24xdloN03An8uQqIERxOmV9oqMXPdyEo",
+  "redirectUrl": "http://localhost:3000",
+  "developmentMode": true
+}
