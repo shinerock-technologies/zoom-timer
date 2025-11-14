@@ -19,5 +19,8 @@
       "main": "/",
       "label": "Multi Timer"
     }
+  },
+  "content_security_policy": {
+    "connect-src": "https://api.openai.com"
   }
 }
