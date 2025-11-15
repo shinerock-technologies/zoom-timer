@@ -16,6 +16,7 @@ import { WandSparkles } from "lucide-react";
 import { generateUUID } from "./utils/uuid";
 import { generateTimerRoom, editRoomWithAI } from "./services/openai";
 import { Toaster } from "./components/ui/sonner";
+import { toast } from "sonner";
 import "./App.css";
 
 function App() {
@@ -47,7 +48,6 @@ function App() {
   const [showAIRoomModal, setShowAIRoomModal] = useState(false);
   const [showAITimerModal, setShowAITimerModal] = useState(false);
   const [undoState, setUndoState] = useState(null);
-  const [showUndoNotification, setShowUndoNotification] = useState(false);
   const roomPickerRef = useRef(null);
   const roomNameInputRef = useRef(null);
   const newRoomInputRef = useRef(null);
@@ -712,33 +712,52 @@ function App() {
     showUndoToast();
   };
 
-  const handleUndo = () => {
-    if (undoState) {
-      setTimers(undoState.timers);
-      setRoomName(undoState.roomName);
-      setRoomId(undoState.roomId);
-      setUndoState(null);
-      setShowUndoNotification(false);
-      // TODO: Send negative feedback to training system
-      console.log("User undid AI changes - negative feedback");
-    }
-  };
-
-  const handleKeepChanges = () => {
-    setUndoState(null);
-    setShowUndoNotification(false);
-    // TODO: Send positive feedback to training system
-    console.log("User kept AI changes - positive feedback");
-  };
-
   const showUndoToast = () => {
-    setShowUndoNotification(true);
-    // Auto-hide after 15 seconds
-    setTimeout(() => {
-      if (showUndoNotification) {
-        handleKeepChanges();
+    const currentUndoState = {
+      timers: [...timers],
+      roomName,
+      roomId,
+    };
+
+    toast.custom(
+      (t) => (
+        <div className="flex items-center justify-between w-full bg-[#2d2d2d] border border-[#3d3d3d] rounded px-4 py-3 shadow-lg">
+          <span className="text-white font-medium">AI changes applied</span>
+          <div className="flex gap-2 ml-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTimers(currentUndoState.timers);
+                setRoomName(currentUndoState.roomName);
+                setRoomId(currentUndoState.roomId);
+                setUndoState(null);
+                toast.dismiss(t);
+                console.log("User undid AI changes - negative feedback");
+              }}>
+              Undo
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setUndoState(null);
+                toast.dismiss(t);
+                console.log("User kept AI changes - positive feedback");
+              }}>
+              Keep
+            </Button>
+          </div>
+        </div>
+      ),
+      {
+        duration: 15000,
+        onAutoClose: () => {
+          setUndoState(null);
+          console.log("User kept AI changes - positive feedback (auto)");
+        },
       }
-    }, 15000);
+    );
   };
 
   useEffect(() => {
@@ -1740,22 +1759,6 @@ function App() {
         type="edit"
         onGenerate={handleEditRoomWithAI}
       />
-
-      {showUndoNotification && undoState && (
-        <div className="undo-notification">
-          <div className="undo-content">
-            <span className="undo-message">AI changes applied</span>
-            <div className="undo-actions">
-              <Button variant="outline" size="sm" onClick={handleUndo}>
-                Undo
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleKeepChanges}>
-                Keep
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Sheet open={showTemplateSheet} onOpenChange={setShowTemplateSheet}>
         <SheetContent

@@ -69,7 +69,7 @@ function ActiveTimer({
           -30
         </button>
         <button
-          className="master-control-btn play-pause-btn"
+          className="master-control-btn play-pause-btn text-2xl"
           onClick={onTogglePlayPause}
           disabled={!activeTimer}
           title={hasRunningTimer ? "Pause" : "Play"}>

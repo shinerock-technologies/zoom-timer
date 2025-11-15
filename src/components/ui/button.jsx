@@ -12,7 +12,7 @@ const buttonVariants = cva(
         primary: "rounded bg-[#2d8cff] text-white hover:bg-[#1a73e8]",
         active:
           "rounded-none bg-[rgba(45,140,255,0.15)] text-[#2d8cff] border border-[#2d8cff] hover:bg-[#2d8cff] hover:text-white",
-        ghost: "rounded hover:bg-[#2d2d2d] hover:text-[#2d8cff]",
+        ghost: "rounded text-white hover:bg-[#2d2d2d] hover:text-[#2d8cff]",
         outline:
           "rounded border border-[#3d3d3d] bg-transparent hover:bg-[#2d2d2d] text-white",
         secondary: "rounded bg-[#3d3d3d] text-white hover:bg-[#4d4d4d]",
