@@ -12,6 +12,7 @@ import {
   SheetDescription,
 } from "./components/ui/sheet";
 import { Button } from "./components/ui/button";
+import { WandSparkles } from "lucide-react";
 import { generateUUID } from "./utils/uuid";
 import { generateTimerRoom, editRoomWithAI } from "./services/openai";
 import { Toaster } from "./components/ui/sonner";
@@ -26,6 +27,7 @@ function App() {
   const [editingTimer, setEditingTimer] = useState(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showAIMenu, setShowAIMenu] = useState(false);
+  const [showGenerateMenu, setShowGenerateMenu] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [roomName, setRoomName] = useState("My Timer Room");
   const [roomId, setRoomId] = useState(() => generateUUID());
@@ -40,6 +42,7 @@ function App() {
   const [isGeneratingRoom, setIsGeneratingRoom] = useState(false);
   const [aiRoomError, setAiRoomError] = useState(null);
   const [aiLoadingMessage, setAiLoadingMessage] = useState(0);
+  const [showTemplateSheet, setShowTemplateSheet] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showAIRoomModal, setShowAIRoomModal] = useState(false);
   const [showAITimerModal, setShowAITimerModal] = useState(false);
@@ -50,6 +53,7 @@ function App() {
   const newRoomInputRef = useRef(null);
   const aiMenuRef = useRef(null);
   const templatesMenuRef = useRef(null);
+  const generateMenuRef = useRef(null);
   const [canvasEnabled, setCanvasEnabled] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [cameraMode, setCameraMode] = useState(false);
@@ -237,6 +241,26 @@ function App() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showTemplates]);
+
+  // Close generate menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        generateMenuRef.current &&
+        !generateMenuRef.current.contains(event.target)
+      ) {
+        setShowGenerateMenu(false);
+      }
+    };
+
+    if (showGenerateMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showGenerateMenu]);
 
   // Handle keyboard shortcuts for room name editing
   useEffect(() => {
@@ -1158,7 +1182,9 @@ function App() {
 
   return (
     <div className="app">
-      <div className="app-header">
+      <div
+        className="app-header"
+        style={{ padding: "8px 16px", minHeight: "48px" }}>
         <div className="header-left">
           <div className="room-name-dropdown" ref={roomPickerRef}>
             {isEditingRoomName ? (
@@ -1172,28 +1198,35 @@ function App() {
                   placeholder="Room name"
                   maxLength={50}
                 />
-                <button
-                  className="room-name-save"
+                <Button
+                  size="sm"
+                  variant="primary"
+                  className="h-8 w-8 p-0"
                   onClick={saveRoomName}
                   title="Save">
                   ✓
-                </button>
-                <button
-                  className="room-name-cancel"
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
                   onClick={cancelEditingRoomName}
                   title="Cancel">
                   ✕
-                </button>
+                </Button>
               </div>
             ) : (
-              <div className="room-name-display">
+              <div
+                className="room-name-display"
+                style={{ justifyContent: "flex-start" }}>
                 {timers.length > 0 && (
                   <div className="room-total-time-badge">
-                    ⏱ {formatCompactTime(getTotalTime())}
+                    {formatCompactTime(getTotalTime())}
                   </div>
                 )}
                 <h1
                   className="room-name clickable"
+                  style={{ textAlign: "left" }}
                   onClick={() => {
                     setShowRoomPicker(!showRoomPicker);
                     setShowTemplates(false);
@@ -1206,8 +1239,9 @@ function App() {
 
             {showRoomPicker && (
               <div className="room-picker-menu">
-                <button
-                  className="room-picker-edit-current"
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-2 text-[#2d8cff] hover:bg-[rgba(45,140,255,0.15)] hover:text-[#2d8cff] transition-colors"
                   onClick={() => {
                     startEditingRoomName();
                     setShowRoomPicker(false);
@@ -1220,7 +1254,7 @@ function App() {
                     <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" />
                   </svg>
                   <span>Edit Room Name</span>
-                </button>
+                </Button>
                 {savedRooms.length > 0 && (
                   <>
                     <div className="room-picker-divider"></div>
@@ -1228,35 +1262,36 @@ function App() {
                       <div
                         key={room.roomId || room.roomName}
                         className="room-picker-item">
-                        <button
-                          className="room-picker-button"
+                        <Button
+                          variant="ghost"
+                          className="flex-1 justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
                           onClick={() => loadSavedRoom(room)}>
-                          <div className="room-picker-content">
-                            <div className="room-picker-name">
+                          <div className="flex flex-col items-start gap-0 w-full">
+                            <div className="text-white font-medium text-left">
                               {room.roomName}
                             </div>
-                            <div className="room-picker-meta">
-                              <span className="room-picker-count">
-                                {room.timers.length} timers
-                              </span>
-                              <span className="room-picker-separator">•</span>
-                              <span className="room-picker-time">
+                            <div className="flex items-center gap-2 text-xs text-[#888]">
+                              <span>{room.timers.length} timers</span>
+                              <span>•</span>
+                              <span className="text-[#2d8cff]">
                                 {formatCompactTime(
                                   getRoomTotalTime(room.timers)
                                 )}
                               </span>
                             </div>
                           </div>
-                        </button>
-                        <button
-                          className="room-picker-delete"
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-[#888] hover:text-red-500 hover:bg-[rgba(244,67,54,0.1)] transition-colors mr-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteSavedRoom(room);
                           }}
                           title="Delete room">
                           ✕
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </>
@@ -1266,26 +1301,67 @@ function App() {
           </div>
         </div>
         <div className="header-right">
-          <button
-            className={`canvas-toggle-btn ${canvasEnabled ? "active" : ""}`}
-            onClick={() => setCanvasEnabled(!canvasEnabled)}
-            title={
-              canvasEnabled
-                ? "Hide timer on canvas"
-                : "Show timer on canvas for everyone"
-            }>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V1zm4 0v6h8V1H4zm8 8H4v6h8V9zM1 1v2h2V1H1zm2 3H1v2h2V4zM1 7v2h2V7H1zm2 3H1v2h2v-2zm-2 3v2h2v-2H1zM15 1h-2v2h2V1zm-2 3v2h2V4h-2zm2 3h-2v2h2V7zm-2 3v2h2v-2h-2zm2 3h-2v2h2v-2z" />
-            </svg>
-          </button>
+          <div className="template-dropdown" ref={generateMenuRef}>
+            <Button
+              size="sm"
+              variant="active"
+              className="h-8 gap-1.5 px-2 sm:px-3"
+              onClick={() => setShowGenerateMenu(!showGenerateMenu)}
+              title="Generate with AI">
+              <WandSparkles size={14} />
+              <span className="hidden sm:inline">Generate</span>
+            </Button>
+
+            {showGenerateMenu && (
+              <div className="template-menu">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
+                  onClick={() => {
+                    setShowGenerateMenu(false);
+                    setShowAIRoomModal(true);
+                  }}>
+                  <div className="flex flex-col items-start gap-0 w-full">
+                    <div className="text-white font-medium text-left">
+                      Generate Room
+                    </div>
+                    <div className="text-xs text-[#888]">
+                      Create multiple timers from description
+                    </div>
+                  </div>
+                </Button>
+                {timers.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
+                    onClick={() => {
+                      setShowGenerateMenu(false);
+                      setShowAITimerModal(true);
+                    }}>
+                    <div className="flex flex-col items-start gap-0 w-full">
+                      <div className="text-white font-medium text-left flex items-center gap-2">
+                        Edit Timer
+                        <span className="experimental-badge">Experimental</span>
+                      </div>
+                      <div className="text-xs text-[#888]">
+                        Add, modify, or remove timers
+                      </div>
+                    </div>
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="template-dropdown" ref={templatesMenuRef}>
-            <button
-              className="add-button combined"
+            <Button
+              size="sm"
+              variant="active"
+              className="h-8 gap-2 px-2 sm:px-3"
               onClick={() => {
                 setShowTemplates(!showTemplates);
               }}
-              title="New Room">
+              title="Create">
               <svg
                 width="14"
                 height="14"
@@ -1294,90 +1370,59 @@ function App() {
                 <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
                 <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
               </svg>
-            </button>
+              <span className="hidden sm:inline">Create</span>
+            </Button>
 
             {showTemplates && (
               <div className="template-menu">
-                <button
-                  className="template-item custom"
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
                   onClick={() => {
                     setShowTemplates(false);
                     setShowNewRoomModal(true);
                   }}>
-                  <span className="template-item-icon">➕</span>
-                  <div className="template-item-content">
-                    <div className="template-item-name">
-                      Make Custom Timer Room
+                  <div className="flex flex-col items-start gap-0 w-full">
+                    <div className="text-white font-medium text-left">
+                      New Room
                     </div>
-                    <div className="template-item-count">
-                      Start from scratch
+                    <div className="text-xs text-[#888]">
+                      Create a custom timer room
                     </div>
                   </div>
-                </button>
-                <button
-                  className="template-item ai-generate"
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
                   onClick={() => {
-                    setShowAIRoomModal(true);
                     setShowTemplates(false);
+                    setShowModal(true);
                   }}>
-                  <span className="template-item-icon">
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 16 16"
-                      fill="currentColor">
-                      <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
-                    </svg>
-                  </span>
-                  <div className="template-item-content">
-                    <div className="template-item-name">Generate with AI</div>
-                    <div className="template-item-count">
-                      Create multiple timers from description
+                  <div className="flex flex-col items-start gap-0 w-full">
+                    <div className="text-white font-medium text-left">
+                      New Timer
+                    </div>
+                    <div className="text-xs text-[#888]">
+                      Add a timer to current room
                     </div>
                   </div>
-                </button>
-                {timers.length > 0 && (
-                  <button
-                    className="template-item ai-generate"
-                    onClick={() => {
-                      setShowAITimerModal(true);
-                      setShowTemplates(false);
-                    }}>
-                    <span className="template-item-icon">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="currentColor">
-                        <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
-                      </svg>
-                    </span>
-                    <div className="template-item-content">
-                      <div className="template-item-name">
-                        Edit with AI
-                        <span className="experimental-badge">Experimental</span>
-                      </div>
-                      <div className="template-item-count">
-                        Add, modify, or remove timers
-                      </div>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-auto py-2 px-3 hover:bg-[#2a2a2a] transition-colors"
+                  onClick={() => {
+                    setShowTemplates(false);
+                    setShowTemplateSheet(true);
+                  }}>
+                  <div className="flex flex-col items-start gap-0 w-full">
+                    <div className="text-white font-medium text-left">
+                      From Template
                     </div>
-                  </button>
-                )}
-                <div className="template-divider"></div>
-                {Object.entries(templates).map(([key, template]) => (
-                  <button
-                    key={key}
-                    className="template-item"
-                    onClick={() => loadTemplate(key)}>
-                    <span className="template-item-icon">{template.icon}</span>
-                    <div className="template-item-content">
-                      <div className="template-item-name">{template.name}</div>
-                      <div className="template-item-count">
-                        {template.timers.length} timers
-                      </div>
+                    <div className="text-xs text-[#888]">
+                      Browse pre-made timer rooms
                     </div>
-                  </button>
-                ))}
+                  </div>
+                </Button>
               </div>
             )}
           </div>
@@ -1401,18 +1446,22 @@ function App() {
               your own.
             </p>
             <div className="welcome-actions">
-              <button
-                className="welcome-btn primary"
+              <Button
+                variant="primary"
+                size="lg"
+                className="gap-2"
                 onClick={() => setShowNewRoomModal(true)}>
                 <span className="welcome-btn-icon">➕</span>
                 Create Custom Room
-              </button>
-              <button
-                className="welcome-btn secondary"
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2"
                 onClick={() => setShowTemplates(true)}>
                 <span className="welcome-btn-icon">📋</span>
                 Browse Templates
-              </button>
+              </Button>
             </div>
             <div className="welcome-templates">
               <div className="welcome-templates-title">Popular Templates</div>
@@ -1420,9 +1469,10 @@ function App() {
                 {Object.entries(templates)
                   .slice(0, 6)
                   .map(([key, template]) => (
-                    <button
+                    <Button
                       key={key}
-                      className="welcome-template-card"
+                      variant="ghost"
+                      className="welcome-template-card h-auto flex-col py-4"
                       onClick={() => loadTemplate(key)}>
                       <div className="welcome-template-icon">
                         {template.icon}
@@ -1433,7 +1483,7 @@ function App() {
                       <div className="welcome-template-count">
                         {template.timers.length} timers
                       </div>
-                    </button>
+                    </Button>
                   ))}
               </div>
             </div>
@@ -1461,11 +1511,12 @@ function App() {
             <div className="up-next-section">
               <div className="up-next-header">
                 <span>All Timers</span>
-                <button
-                  className="add-button-small"
+                <Button
+                  variant="active"
+                  size="sm"
                   onClick={() => setShowModal(true)}>
                   Add Timer
-                </button>
+                </Button>
               </div>
               {timers.map((timer, index) => (
                 <Timer
@@ -1546,13 +1597,7 @@ function App() {
               variant={newRoomMode === "ai" ? "primary" : "ghost"}
               className="flex-1 gap-2"
               onClick={() => setNewRoomMode("ai")}>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 16 16"
-                fill="currentColor">
-                <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
-              </svg>
+              <WandSparkles size={14} />
               AI Generate
             </Button>
           </div>
@@ -1701,18 +1746,49 @@ function App() {
           <div className="undo-content">
             <span className="undo-message">AI changes applied</span>
             <div className="undo-actions">
-              <button className="undo-button undo-revert" onClick={handleUndo}>
+              <Button variant="outline" size="sm" onClick={handleUndo}>
                 Undo
-              </button>
-              <button
-                className="undo-button undo-keep"
-                onClick={handleKeepChanges}>
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleKeepChanges}>
                 Keep
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
+
+      <Sheet open={showTemplateSheet} onOpenChange={setShowTemplateSheet}>
+        <SheetContent
+          side="right"
+          className="flex flex-col gap-6 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Choose a Template</SheetTitle>
+            <SheetDescription>
+              Select a pre-made timer room template to get started quickly
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex flex-col gap-2">
+            {Object.entries(templates).map(([key, template]) => (
+              <Button
+                key={key}
+                variant="ghost"
+                className="w-full justify-start h-auto py-3 px-3 gap-3"
+                onClick={() => {
+                  loadTemplate(key);
+                  setShowTemplateSheet(false);
+                }}>
+                <div className="flex flex-col items-start gap-0">
+                  <div className="text-white font-medium">{template.name}</div>
+                  <div className="text-xs text-[#888]">
+                    {template.timers.length} timers
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {showOverlay && activeTimer && (
         <div className="timer-canvas-overlay">
