@@ -4,11 +4,31 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
+  const [loadingMessage, setLoadingMessage] = useState(0);
   const inputRef = useRef(null);
+
+  const loadingMessages = [
+    "Starting engine...",
+    "Sprinkling magic...",
+    "Consulting the AI Oracle",
+    "Brewing timers...",
+    "Crafting magic...",
+    "Almost there...",
+  ];
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    const interval = setInterval(() => {
+      setLoadingMessage((prev) => (prev + 1) % loadingMessages.length);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isGenerating]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,10 +53,35 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
   const examples =
     type === "room"
       ? [
-          "Sales pitch meeting",
-          "Morning workout routine",
-          "Team standup meeting",
-          "Cooking dinner",
+          "SaaS discovery call",
+          "Product demo rehearsal",
+          "Client onboarding call",
+          "Daily standup meeting",
+          "Sprint planning session",
+          "Team retrospective",
+          "Brainstorming session",
+          "Interview practice round",
+          "Portfolio presentation",
+          "Classroom lesson block",
+          "Debate practice round",
+          "Tutoring session",
+          "Presentation rehearsal",
+          "Toastmasters speech practice",
+          "Script read-through",
+          "Music practice block",
+          "Pictionary round",
+          "Charades round",
+          "Trivia quiz round",
+          "Hot seat game",
+          "Coffee chat rotation",
+          "Meditation session",
+          "Stretch break routine",
+          "Focus work session",
+          "Marketing review meeting",
+          "Product prioritization session",
+          "Incident response drill",
+          "Lightning talk round",
+          "Breakout room activity",
         ]
       : [
           "Add a 5 minute break",
@@ -111,7 +156,10 @@ function AIPromptModal({ onClose, onGenerate, type = "room" }) {
                 type="submit"
                 className="ai-prompt-generate"
                 disabled={isGenerating || !prompt.trim()}>
-                {isGenerating ? "Generating..." : "Generate"}
+                {isGenerating && (
+                  <span className="spinner" aria-hidden="true"></span>
+                )}
+                {isGenerating ? loadingMessages[loadingMessage] : "Generate"}
               </button>
             </div>
           </form>
