@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timer Overlay</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        overflow: hidden;
+        width: 1280px;
+        height: 720px;
+      }
+
+      .timer-box {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(10px);
+        border: 3px solid #4caf50;
+        border-radius: 12px;
+        padding: 12px 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+      }
+
+      .timer-time {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #4caf50;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 3px;
+        text-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+      }
+
+      .timer-box.warning {
+        border-color: #ffaa00;
+      }
+
+      .timer-box.warning .timer-time {
+        color: #ffaa00;
+        text-shadow: 0 0 20px rgba(255, 170, 0, 0.6);
+      }
+
+      .timer-box.urgent {
+        border-color: #ff6600;
+      }
+
+      .timer-box.urgent .timer-time {
+        color: #ff6600;
+        text-shadow: 0 0 20px rgba(255, 102, 0, 0.6);
+      }
+
+      .timer-box.critical {
+        border-color: #ff0000;
+        animation: pulse-border 1s ease-in-out infinite;
+      }
+
+      .timer-box.critical .timer-time {
+        color: #ff0000;
+        text-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+        animation: pulse-text 1s ease-in-out infinite;
+      }
+
+      @keyframes pulse-border {
+        0%,
+        100% {
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8),
+            0 0 0 0 rgba(255, 0, 0, 0.4);
+        }
+        50% {
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8),
+            0 0 20px 4px rgba(255, 0, 0, 0.8);
+        }
+      }
+
+      @keyframes pulse-text {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="timer-overlay" class="timer-box hidden">
+      <div class="timer-time" id="timer-display">00:00</div>
+    </div>
+
+    <script src="https://appssdk.zoom.us/sdk.min.js"></script>
+    <script>
+      let activeTimer = null;
+      let updateInterval = null;
+
+      // Listen for messages from parent app
+      window.addEventListener("message", (event) => {
+        const { type, timer } = event.data;
+
+        if (type === "UPDATE_TIMER") {
+          updateTimerDisplay(timer);
+        } else if (type === "HIDE_TIMER") {
+          hideTimer();
+        }
+      });
+
+      function updateTimerDisplay(timer) {
+        if (!timer) {
+          hideTimer();
+          return;
+        }
+
+        const overlay = document.getElementById("timer-overlay");
+        const display = document.getElementById("timer-display");
+
+        // Show overlay
+        overlay.classList.remove("hidden");
+
+        // Update time
+        const minutes = Math.floor(timer.remainingSeconds / 60);
+        const seconds = timer.remainingSeconds % 60;
+        display.textContent = `${String(minutes).padStart(2, "0")}:${String(
+          seconds
+        ).padStart(2, "0")}`;
+
+        // Update color based on time remaining
+        const percentage = timer.remainingSeconds / timer.totalSeconds;
+
+        overlay.classList.remove("warning", "urgent", "critical");
+
+        if (percentage <= 0.05) {
+          overlay.classList.add("critical");
+        } else if (percentage <= 0.1) {
+          overlay.classList.add("urgent");
+        } else if (percentage <= 0.25) {
+          overlay.classList.add("warning");
+        }
+      }
+
+      function hideTimer() {
+        const overlay = document.getElementById("timer-overlay");
+        overlay.classList.add("hidden");
+      }
+
+      // Initialize
+      console.log("Timer overlay loaded");
+    </script>
+  </body>
+</html>

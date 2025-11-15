@@ -35,6 +35,10 @@ function App() {
   const newRoomInputRef = useRef(null);
   const aiMenuRef = useRef(null);
   const templatesMenuRef = useRef(null);
+  const [canvasEnabled, setCanvasEnabled] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [cameraMode, setCameraMode] = useState(false);
+  const [renderingContext, setRenderingContext] = useState(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -639,7 +643,21 @@ function App() {
 
         setDebugInfo("Configuring Zoom SDK...");
         const configResponse = await zoomSdk.config({
-          capabilities: ["shareApp", "getMeetingContext", "showNotification"],
+          capabilities: [
+            "shareApp",
+            "getMeetingContext",
+            "showNotification",
+            "drawParticipant",
+            "drawImage",
+            "drawWebView",
+            "clearParticipant",
+            "clearImage",
+            "clearWebView",
+            "runRenderingContext",
+            "closeRenderingContext",
+            "getUserContext",
+            "useRenderingContextVideo",
+          ],
           version: "0.16.0",
         });
         setDebugInfo("Zoom SDK configured!");
@@ -656,6 +674,133 @@ function App() {
 
     configureZoomApp();
   }, []);
+
+  // Camera Mode - draws timer on video feed
+  useEffect(() => {
+    async function handleCameraMode() {
+      // Exit camera mode if disabled or SDK not ready
+      if (!canvasEnabled || !zoomReady) {
+        if (cameraMode) {
+          try {
+            // Disable rendering context video first
+            await zoomSdk.callZoomApi("useRenderingContextVideo", {
+              enable: false,
+            });
+            console.log("Disabled rendering context video");
+
+            // Then close rendering context
+            await zoomSdk.closeRenderingContext();
+            setCameraMode(false);
+            setRenderingContext(null);
+            console.log("Exited camera mode");
+          } catch (err) {
+            console.error("Error exiting camera mode:", err);
+          }
+        }
+        setShowOverlay(false);
+        return;
+      }
+
+      // Don't re-enter if already in camera mode
+      if (cameraMode) {
+        return;
+      }
+
+      try {
+        console.log("Entering camera mode...");
+
+        // Enter camera mode
+        const response = await zoomSdk.runRenderingContext({ view: "camera" });
+        console.log("Camera mode response:", response);
+
+        // CRITICAL: Tell Zoom to use the rendering context as your camera feed
+        // This makes the overlay visible to ALL participants
+        await zoomSdk.callZoomApi("useRenderingContextVideo", {
+          enable: true,
+        });
+        console.log("Enabled rendering context video broadcast");
+
+        // Wait for CEF to load (first time may take longer)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Get current user context for participant UUID
+        const userContext = await zoomSdk.getUserContext();
+        console.log("User context:", userContext);
+
+        // Use standard dimensions (1280x720 is the default for camera mode)
+        const width = 1280;
+        const height = 720;
+
+        // Draw participant video (layer 1 - bottom)
+        await zoomSdk.drawParticipant({
+          participantUUID: userContext.participantUUID,
+          x: 0,
+          y: 0,
+          width: width,
+          height: height,
+          zIndex: 1,
+        });
+        console.log("Drew participant video");
+
+        // Draw timer overlay using drawWebView (layer 2 - on top)
+        // This renders the timer-overlay.html on top of the video
+        await zoomSdk.drawWebView({
+          x: 0,
+          y: 0,
+          width: width,
+          height: height,
+          zIndex: 2,
+        });
+        console.log("Drew WebView overlay");
+
+        setCameraMode(true);
+        setRenderingContext("camera");
+        setShowOverlay(true);
+        console.log("Camera mode enabled - visible to all participants!");
+      } catch (err) {
+        console.error("Error entering camera mode:", err);
+        setError(`Camera mode error: ${err.message}`);
+        setCanvasEnabled(false);
+      }
+    }
+
+    handleCameraMode();
+  }, [canvasEnabled, zoomReady]);
+
+  // Update overlay with active timer data
+  useEffect(() => {
+    if (!showOverlay) return;
+
+    // Compute active timer within the effect
+    const runningTimerIndex = timers.findIndex((t) => t.isRunning);
+    const firstTimerWithTimeIndex = timers.findIndex(
+      (t) => t.remainingSeconds > 0
+    );
+    const activeTimerIndex =
+      runningTimerIndex >= 0 ? runningTimerIndex : firstTimerWithTimeIndex;
+    const activeTimer = activeTimerIndex >= 0 ? timers[activeTimerIndex] : null;
+
+    // Send timer data to overlay iframe
+    const overlayFrame = document.querySelector('iframe[src*="timer-overlay"]');
+    if (overlayFrame && overlayFrame.contentWindow) {
+      if (activeTimer) {
+        overlayFrame.contentWindow.postMessage(
+          {
+            type: "UPDATE_TIMER",
+            timer: activeTimer,
+          },
+          "*"
+        );
+      } else {
+        overlayFrame.contentWindow.postMessage(
+          {
+            type: "HIDE_TIMER",
+          },
+          "*"
+        );
+      }
+    }
+  }, [showOverlay, timers]);
 
   const addTimer = (title, message, totalSeconds, alerts = []) => {
     const newTimer = {
@@ -968,10 +1113,17 @@ function App() {
                   }}>
                   {roomName} <span className="dropdown-arrow">▼</span>
                 </h1>
+              </div>
+            )}
+
+            {showRoomPicker && (
+              <div className="room-picker-menu">
                 <button
-                  className="room-name-edit-btn"
-                  onClick={startEditingRoomName}
-                  title="Edit room name">
+                  className="room-picker-edit-current"
+                  onClick={() => {
+                    startEditingRoomName();
+                    setShowRoomPicker(false);
+                  }}>
                   <svg
                     width="14"
                     height="14"
@@ -979,104 +1131,81 @@ function App() {
                     fill="currentColor">
                     <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z" />
                   </svg>
+                  <span>Edit Room Name</span>
                 </button>
-              </div>
-            )}
-
-            {showRoomPicker && savedRooms.length > 0 && (
-              <div className="room-picker-menu">
-                {savedRooms.map((room) => (
-                  <div
-                    key={room.roomId || room.roomName}
-                    className="room-picker-item">
-                    <button
-                      className="room-picker-button"
-                      onClick={() => loadSavedRoom(room)}>
-                      <div className="room-picker-content">
-                        <div className="room-picker-name">{room.roomName}</div>
-                        <div className="room-picker-meta">
-                          <span className="room-picker-count">
-                            {room.timers.length} timers
-                          </span>
-                          <span className="room-picker-separator">•</span>
-                          <span className="room-picker-time">
-                            {formatCompactTime(getRoomTotalTime(room.timers))}
-                          </span>
-                        </div>
+                {savedRooms.length > 0 && (
+                  <>
+                    <div className="room-picker-divider"></div>
+                    {savedRooms.map((room) => (
+                      <div
+                        key={room.roomId || room.roomName}
+                        className="room-picker-item">
+                        <button
+                          className="room-picker-button"
+                          onClick={() => loadSavedRoom(room)}>
+                          <div className="room-picker-content">
+                            <div className="room-picker-name">
+                              {room.roomName}
+                            </div>
+                            <div className="room-picker-meta">
+                              <span className="room-picker-count">
+                                {room.timers.length} timers
+                              </span>
+                              <span className="room-picker-separator">•</span>
+                              <span className="room-picker-time">
+                                {formatCompactTime(
+                                  getRoomTotalTime(room.timers)
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                        <button
+                          className="room-picker-delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteSavedRoom(room);
+                          }}
+                          title="Delete room">
+                          ✕
+                        </button>
                       </div>
-                    </button>
-                    <button
-                      className="room-picker-delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSavedRoom(room);
-                      }}
-                      title="Delete room">
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
         <div className="header-right">
-          <div className="ai-dropdown" ref={aiMenuRef}>
-            <button
-              className="ai-button"
-              onClick={() => {
-                setShowAIMenu(!showAIMenu);
-                setShowTemplates(false);
-              }}>
-              ✨<span className="ai-button-text">AI</span>
-            </button>
-
-            {showAIMenu && (
-              <div className="template-menu ai-menu">
-                <button
-                  className="template-item ai-generate"
-                  onClick={() => {
-                    setShowAIRoomModal(true);
-                    setShowAIMenu(false);
-                  }}>
-                  <span className="template-item-icon">🏠</span>
-                  <div className="template-item-content">
-                    <div className="template-item-name">Generate with AI</div>
-                    <div className="template-item-count">
-                      Create multiple timers from description
-                    </div>
-                  </div>
-                </button>
-                <button
-                  className="template-item ai-generate"
-                  onClick={() => {
-                    setShowAITimerModal(true);
-                    setShowAIMenu(false);
-                  }}>
-                  <span className="template-item-icon">⏱️</span>
-                  <div className="template-item-content">
-                    <div className="template-item-name">
-                      Edit with AI
-                      <span className="experimental-badge">Experimental</span>
-                    </div>
-                    <div className="template-item-count">
-                      Add, modify, or remove timers
-                    </div>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
+          <button
+            className={`canvas-toggle-btn ${canvasEnabled ? "active" : ""}`}
+            onClick={() => setCanvasEnabled(!canvasEnabled)}
+            title={
+              canvasEnabled
+                ? "Hide timer on canvas"
+                : "Show timer on canvas for everyone"
+            }>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M0 1a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H1a1 1 0 0 1-1-1V1zm4 0v6h8V1H4zm8 8H4v6h8V9zM1 1v2h2V1H1zm2 3H1v2h2V4zM1 7v2h2V7H1zm2 3H1v2h2v-2zm-2 3v2h2v-2H1zM15 1h-2v2h2V1zm-2 3v2h2V4h-2zm2 3h-2v2h2V7zm-2 3v2h2v-2h-2zm2 3h-2v2h2v-2z" />
+            </svg>
+          </button>
 
           <div className="template-dropdown" ref={templatesMenuRef}>
             <button
               className="add-button combined"
               onClick={() => {
                 setShowTemplates(!showTemplates);
-                setShowAIMenu(false);
-              }}>
-              <span className="new-room-text">New Room</span>
-              <span className="new-room-icon">+</span>
+              }}
+              title="New Room">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
+                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+              </svg>
             </button>
 
             {showTemplates && (
@@ -1097,6 +1226,55 @@ function App() {
                     </div>
                   </div>
                 </button>
+                <button
+                  className="template-item ai-generate"
+                  onClick={() => {
+                    setShowAIRoomModal(true);
+                    setShowTemplates(false);
+                  }}>
+                  <span className="template-item-icon">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 16 16"
+                      fill="currentColor">
+                      <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
+                    </svg>
+                  </span>
+                  <div className="template-item-content">
+                    <div className="template-item-name">Generate with AI</div>
+                    <div className="template-item-count">
+                      Create multiple timers from description
+                    </div>
+                  </div>
+                </button>
+                {timers.length > 0 && (
+                  <button
+                    className="template-item ai-generate"
+                    onClick={() => {
+                      setShowAITimerModal(true);
+                      setShowTemplates(false);
+                    }}>
+                    <span className="template-item-icon">
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="currentColor">
+                        <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
+                      </svg>
+                    </span>
+                    <div className="template-item-content">
+                      <div className="template-item-name">
+                        Edit with AI
+                        <span className="experimental-badge">Experimental</span>
+                      </div>
+                      <div className="template-item-count">
+                        Add, modify, or remove timers
+                      </div>
+                    </div>
+                  </button>
+                )}
                 <div className="template-divider"></div>
                 {Object.entries(templates).map(([key, template]) => (
                   <button
@@ -1353,6 +1531,32 @@ function App() {
                 onClick={handleKeepChanges}>
                 Keep
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOverlay && activeTimer && (
+        <div className="timer-canvas-overlay">
+          <div className="timer-canvas-box">
+            <div className="timer-canvas-title">{activeTimer.title}</div>
+            <div
+              className={`timer-canvas-time ${
+                activeTimer.remainingSeconds === 0 ? "finished" : ""
+              } ${
+                activeTimer.remainingSeconds / activeTimer.totalSeconds <= 0.25
+                  ? "warning"
+                  : ""
+              } ${
+                activeTimer.remainingSeconds / activeTimer.totalSeconds <= 0.1
+                  ? "urgent"
+                  : ""
+              } ${
+                activeTimer.remainingSeconds / activeTimer.totalSeconds <= 0.05
+                  ? "critical"
+                  : ""
+              }`}>
+              {formatMasterTime(activeTimer.remainingSeconds)}
             </div>
           </div>
         </div>

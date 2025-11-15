@@ -10,14 +10,40 @@
   "home_url": "https://localhost:3000",
   "redirect_url": "https://localhost:3000",
   "development_mode": true,
-  "capabilities": ["shareApp", "getMeetingContext"],
+  "capabilities": [
+    "shareApp",
+    "getMeetingContext",
+    "drawParticipant",
+    "drawImage",
+    "drawWebView",
+    "clearParticipant",
+    "clearImage",
+    "clearWebView",
+    "runRenderingContext",
+    "getUserContext",
+    "useRenderingContextVideo"
+  ],
   "apis": {
-    "showNotification": {}
+    "showNotification": {},
+    "drawParticipant": {},
+    "drawImage": {},
+    "drawWebView": {},
+    "clearParticipant": {},
+    "clearImage": {},
+    "clearWebView": {},
+    "runRenderingContext": {},
+    "closeRenderingContext": {},
+    "getUserContext": {},
+    "useRenderingContextVideo": {}
   },
   "modules": {
     "inMeeting": {
       "main": "/",
       "label": "Multi Timer"
+    },
+    "camera": {
+      "main": "/",
+      "label": "Timer Overlay"
     }
   },
   "content_security_policy": {
