@@ -4,6 +4,14 @@ import Timer from "./components/Timer";
 import AddTimer from "./components/AddTimer";
 import ActiveTimer from "./components/ActiveTimer";
 import AIPromptSheet from "./components/AIPromptSheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "./components/ui/sheet";
+import { Button } from "./components/ui/button";
 import { generateUUID } from "./utils/uuid";
 import { generateTimerRoom, editRoomWithAI } from "./services/openai";
 import { Toaster } from "./components/ui/sonner";
@@ -27,6 +35,11 @@ function App() {
   const [editedRoomName, setEditedRoomName] = useState("");
   const [showNewRoomModal, setShowNewRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomMode, setNewRoomMode] = useState("manual"); // "manual" or "ai"
+  const [aiRoomPrompt, setAiRoomPrompt] = useState("");
+  const [isGeneratingRoom, setIsGeneratingRoom] = useState(false);
+  const [aiRoomError, setAiRoomError] = useState(null);
+  const [aiLoadingMessage, setAiLoadingMessage] = useState(0);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [showAIRoomModal, setShowAIRoomModal] = useState(false);
   const [showAITimerModal, setShowAITimerModal] = useState(false);
@@ -269,6 +282,26 @@ function App() {
       }, 0);
     }
   }, [showNewRoomModal]);
+
+  // Rotate AI loading messages
+  useEffect(() => {
+    if (!isGeneratingRoom) return;
+
+    const loadingMessages = [
+      "Starting engine...",
+      "Sprinkling magic...",
+      "Consulting the AI Oracle",
+      "Brewing timers...",
+      "Crafting magic...",
+      "Almost there...",
+    ];
+
+    const interval = setInterval(() => {
+      setAiLoadingMessage((prev) => (prev + 1) % loadingMessages.length);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [isGeneratingRoom]);
 
   const templates = {
     pomodoro: {
@@ -529,6 +562,9 @@ function App() {
   const cancelNewRoom = () => {
     setShowNewRoomModal(false);
     setNewRoomName("");
+    setNewRoomMode("manual");
+    setAiRoomPrompt("");
+    setAiRoomError(null);
   };
 
   const handleGenerateTimerRoom = async (prompt) => {
@@ -562,6 +598,56 @@ function App() {
     setShowAIRoomModal(false);
     setShowAIMenu(false);
     showUndoToast();
+  };
+
+  const handleGenerateRoomFromSheet = async (e) => {
+    e.preventDefault();
+
+    if (!aiRoomPrompt.trim()) {
+      setAiRoomError("Please enter a description");
+      return;
+    }
+
+    setIsGeneratingRoom(true);
+    setAiRoomError(null);
+
+    try {
+      // Save current state for undo
+      setUndoState({
+        timers: [...timers],
+        roomName,
+        roomId,
+      });
+
+      const result = await generateTimerRoom(aiRoomPrompt.trim());
+
+      // Create timers from AI response
+      const newTimers = result.timers.map((t) => ({
+        id: generateUUID(),
+        title: t.title,
+        message: t.message || "",
+        totalSeconds: t.seconds,
+        remainingSeconds: t.seconds,
+        isRunning: false,
+        notificationsEnabled: true,
+        alerts: [],
+        triggeredAlerts: [],
+      }));
+
+      setTimers(newTimers);
+      setRoomName(result.roomName);
+      setRoomId(generateUUID());
+      setHasInteracted(true);
+      localStorage.setItem("hasInteracted", "true");
+      setShowNewRoomModal(false);
+      setAiRoomPrompt("");
+      setNewRoomMode("manual");
+      showUndoToast();
+    } catch (err) {
+      setAiRoomError(err.message || "Failed to generate. Please try again.");
+    } finally {
+      setIsGeneratingRoom(false);
+    }
   };
 
   const handleEditRoomWithAI = async (prompt) => {
@@ -1401,25 +1487,27 @@ function App() {
         </>
       )}
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowModal(false)}>
-              ×
-            </button>
-            <AddTimer onAdd={addTimer} />
-          </div>
-        </div>
-      )}
+      <Sheet open={showModal} onOpenChange={setShowModal}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Add Timer</SheetTitle>
+            <SheetDescription>
+              Create a new timer for your sequence
+            </SheetDescription>
+          </SheetHeader>
+          <AddTimer onAdd={addTimer} />
+        </SheetContent>
+      </Sheet>
 
-      {editingTimer && (
-        <div className="modal-overlay" onClick={() => setEditingTimer(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="modal-close"
-              onClick={() => setEditingTimer(null)}>
-              ×
-            </button>
+      <Sheet
+        open={!!editingTimer}
+        onOpenChange={(open) => !open && setEditingTimer(null)}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle>Edit Timer</SheetTitle>
+            <SheetDescription>Update your timer settings</SheetDescription>
+          </SheetHeader>
+          {editingTimer && (
             <AddTimer
               onAdd={saveEditedTimer}
               initialTitle={editingTimer.title}
@@ -1429,44 +1517,170 @@ function App() {
               initialAlerts={editingTimer.alerts || []}
               isEditing={true}
             />
-          </div>
-        </div>
-      )}
+          )}
+        </SheetContent>
+      </Sheet>
 
-      {showNewRoomModal && (
-        <div className="modal-overlay" onClick={cancelNewRoom}>
-          <div
-            className="modal-content new-room-modal"
-            onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={cancelNewRoom}>
-              ×
-            </button>
-            <div className="new-room-form">
-              <h2 className="new-room-title">Create New Timer Room</h2>
-              <p className="new-room-description">
-                Give your timer room a name to get started
-              </p>
-              <input
-                ref={newRoomInputRef}
-                type="text"
-                className="new-room-input"
-                placeholder="e.g., Morning Routine, Team Meeting, Workout"
-                value={newRoomName}
-                onChange={(e) => setNewRoomName(e.target.value)}
-                maxLength={50}
-              />
-              <div className="new-room-actions">
-                <button className="new-room-cancel" onClick={cancelNewRoom}>
+      <Sheet open={showNewRoomModal} onOpenChange={setShowNewRoomModal}>
+        <SheetContent
+          side="right"
+          className="flex flex-col gap-6 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Create New Timer Room</SheetTitle>
+            <SheetDescription>
+              {newRoomMode === "manual"
+                ? "Give your timer room a name to get started"
+                : "Describe the activity and AI will create a sequence of timers"}
+            </SheetDescription>
+          </SheetHeader>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-2 p-1 bg-[#2a2a2a] rounded">
+            <Button
+              variant={newRoomMode === "manual" ? "primary" : "ghost"}
+              className="flex-1"
+              onClick={() => setNewRoomMode("manual")}>
+              Manual
+            </Button>
+            <Button
+              variant={newRoomMode === "ai" ? "primary" : "ghost"}
+              className="flex-1 gap-2"
+              onClick={() => setNewRoomMode("ai")}>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor">
+                <path d="M5 2V0H0v5h2v6H0v5h5v-2h6v2h5v-5h-2V5h2V0h-5v2H5zm6 1v2h2v6h-2v2H5v-2H3V5h2V3h6zm1-2h3v3h-3V1zm3 11v3h-3v-3h3zM4 15H1v-3h3v3zM1 4V1h3v3H1z" />
+              </svg>
+              AI Generate
+            </Button>
+          </div>
+
+          {/* Manual Mode */}
+          {newRoomMode === "manual" && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-white">
+                  Room Name
+                </label>
+                <input
+                  ref={newRoomInputRef}
+                  type="text"
+                  className="w-full px-4 py-3 bg-[#2a2a2a] border-2 border-[#3d3d3d] rounded text-white placeholder:text-[#666] focus:outline-none focus:ring-0 focus:border-[#2d8cff] transition-all"
+                  placeholder="e.g., Morning Routine, Team Meeting, Workout"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") createNewRoom();
+                    if (e.key === "Escape") cancelNewRoom();
+                  }}
+                  maxLength={50}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={cancelNewRoom}>
                   Cancel
-                </button>
-                <button className="new-room-create" onClick={createNewRoom}>
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={createNewRoom}
+                  disabled={!newRoomName.trim()}>
                   Create Room
-                </button>
+                </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
+
+          {/* AI Mode */}
+          {newRoomMode === "ai" && (
+            <form
+              onSubmit={handleGenerateRoomFromSheet}
+              className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-white">
+                  Describe Your Activity
+                </label>
+                <textarea
+                  className="w-full px-4 py-3 bg-[#2a2a2a] border-2 border-[#3d3d3d] rounded text-white placeholder:text-[#666] focus:outline-none focus:ring-0 focus:border-[#2d8cff] transition-all resize-none"
+                  placeholder="e.g., Sales pitch presentation, morning workout routine, team standup"
+                  value={aiRoomPrompt}
+                  onChange={(e) => setAiRoomPrompt(e.target.value)}
+                  rows={4}
+                  disabled={isGeneratingRoom}
+                />
+              </div>
+
+              {aiRoomError && (
+                <div className="px-3 py-2 bg-[rgba(244,67,54,0.1)] border border-[rgba(244,67,54,0.3)] rounded text-[#f44336] text-sm">
+                  {aiRoomError}
+                </div>
+              )}
+
+              <div>
+                <div className="text-xs text-[#666] font-medium uppercase tracking-wide mb-2">
+                  Suggestions
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "SaaS discovery call",
+                    "Product demo rehearsal",
+                    "Client onboarding call",
+                    "Daily standup meeting",
+                    "Sprint planning session",
+                  ].map((example, index) => (
+                    <Button
+                      key={index}
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      className="rounded-full"
+                      onClick={() => setAiRoomPrompt(example)}
+                      disabled={isGeneratingRoom}>
+                      {example}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={cancelNewRoom}
+                  disabled={isGeneratingRoom}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="flex-1 gap-2"
+                  disabled={isGeneratingRoom || !aiRoomPrompt.trim()}>
+                  {isGeneratingRoom && (
+                    <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  )}
+                  {isGeneratingRoom
+                    ? [
+                        "Starting engine...",
+                        "Sprinkling magic...",
+                        "Consulting the AI Oracle",
+                        "Brewing timers...",
+                        "Crafting magic...",
+                        "Almost there...",
+                      ][aiLoadingMessage]
+                    : "Generate"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <AIPromptSheet
         open={showAIRoomModal}

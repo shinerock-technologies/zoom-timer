@@ -24,7 +24,7 @@ const SheetOverlay = React.forwardRef(({ className, ...props }, ref) => (
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 bg-[#1c1c1c] p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+  "fixed z-50 gap-4 bg-[#1c1c1c] p-6 shadow-lg transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500 rounded-none",
   {
     variants: {
       side: {
@@ -33,7 +33,7 @@ const sheetVariants = cva(
           "inset-x-0 bottom-0 border-t border-[#3d3d3d] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
         left: "inset-y-0 left-0 h-full w-[95%] border-r border-[#3d3d3d] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-lg",
         right:
-          "inset-y-0 right-0 h-full w-[95%] max-w-[95%] border-l border-[#3d3d3d] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          "inset-y-0 right-0 h-full w-[95%] border-l border-[#3d3d3d] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-lg",
       },
     },
     defaultVariants: {

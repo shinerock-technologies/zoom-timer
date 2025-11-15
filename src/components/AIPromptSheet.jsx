@@ -101,7 +101,7 @@ function AIPromptSheet({ open, onOpenChange, onGenerate, type = "room" }) {
         <form onSubmit={handleSubmit} className="mt-4">
           <textarea
             ref={inputRef}
-            className="w-full px-4 py-3 bg-[#2d2d2d] border-2 border-[#3d3d3d] rounded-md text-white placeholder:text-[#666] focus:outline-none focus:border-[#2d8cff] transition-colors resize-none"
+            className="w-full px-4 py-3 bg-[#2a2a2a] border border-[#3d3d3d] rounded text-white placeholder:text-[#666] focus:outline-none focus:ring-2 focus:ring-[#2d8cff] focus:border-transparent transition-all resize-none"
             placeholder={
               type === "room"
                 ? "e.g., Sales pitch presentation, morning workout routine, team standup"
@@ -125,38 +125,40 @@ function AIPromptSheet({ open, onOpenChange, onGenerate, type = "room" }) {
             </div>
             <div className="flex flex-wrap gap-2">
               {examples.map((example, index) => (
-                <button
+                <Button
                   key={index}
                   type="button"
-                  className="px-3 py-1.5 bg-[#2d2d2d] border border-[#3d3d3d] rounded-full text-[#888] text-xs hover:bg-[#3d3d3d] hover:text-[#2d8cff] hover:border-[#2d8cff] transition-colors disabled:opacity-50"
+                  variant="default"
+                  size="sm"
+                  className="rounded-full"
                   onClick={() => setPrompt(example)}
                   disabled={isGenerating}>
                   {example}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
 
-          <SheetFooter className="mt-4 flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-2">
             <Button
               type="submit"
               variant="primary"
               disabled={isGenerating || !prompt.trim()}
-              className="w-full">
+              className="w-full gap-2">
               {isGenerating && (
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></span>
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
               )}
               {isGenerating ? loadingMessages[loadingMessage] : "Generate"}
             </Button>
             <Button
               type="button"
-              variant="secondary"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isGenerating}
               className="w-full">
               Cancel
             </Button>
-          </SheetFooter>
+          </div>
         </form>
       </SheetContent>
     </Sheet>
