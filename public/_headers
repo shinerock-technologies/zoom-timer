@@ -1,0 +1,6 @@
+/*
+  X-Content-Type-Options: nosniff
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.openai.com; frame-ancestors 'self' https://*.zoom.us https://*.zoom.com
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: ALLOW-FROM https://zoom.us
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
