@@ -129,14 +129,16 @@ function Timer({
       </div>
       <div className="timer-content">
         {draggable && (
-          <div className="drag-handle" title="Drag to reorder">
+          <div className="drag-handle mr-1" title="Drag to reorder">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M2 4h12v1H2V4zm0 3.5h12v1H2v-1zM2 11h12v1H2v-1z" />
             </svg>
           </div>
         )}
         <div className="timer-left">
-          {timer.title && <div className="timer-title">{timer.title}</div>}
+          {timer.title && (
+            <div className="timer-title -mb-2">{timer.title}</div>
+          )}
           <div className="timer-display">
             <span className="timer-time-display">
               {formatTime(timer.remainingSeconds)}

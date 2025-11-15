@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import zoomSdk from "@zoom/appssdk";
 import Timer from "./components/Timer";
 import AddTimer from "./components/AddTimer";
-import AIPromptModal from "./components/AIPromptModal";
+import ActiveTimer from "./components/ActiveTimer";
+import AIPromptSheet from "./components/AIPromptSheet";
 import { generateUUID } from "./utils/uuid";
 import { generateTimerRoom, editRoomWithAI } from "./services/openai";
+import { Toaster } from "./components/ui/sonner";
 import "./App.css";
 
 function App() {
@@ -373,7 +375,7 @@ function App() {
           message: "10 second test",
           seconds: 10,
           alerts: [
-            { percentage: 25, type: "warning", enabled: true },
+            { percentage: 90, type: "warning", enabled: true },
             { percentage: 10, type: "urgent", enabled: true },
             { percentage: 5, type: "critical", enabled: true },
           ],
@@ -381,9 +383,9 @@ function App() {
         {
           title: "Medium Test",
           message: "20 second test",
-          seconds: 20,
+          seconds: 10,
           alerts: [
-            { percentage: 25, type: "warning", enabled: true },
+            { percentage: 95, type: "warning", enabled: true },
             { percentage: 10, type: "urgent", enabled: true },
             { percentage: 5, type: "critical", enabled: true },
           ],
@@ -391,9 +393,9 @@ function App() {
         {
           title: "Long Test",
           message: "30 second test",
-          seconds: 30,
+          seconds: 10,
           alerts: [
-            { percentage: 25, type: "warning", enabled: true },
+            { percentage: 95, type: "warning", enabled: true },
             { percentage: 10, type: "urgent", enabled: true },
             { percentage: 5, type: "critical", enabled: true },
           ],
@@ -1355,55 +1357,19 @@ function App() {
         <AddTimer onAdd={addTimer} />
       ) : (
         <>
-          {activeTimer && (
-            <div className="active-timer-section">
-              <Timer
-                key={activeTimer.id}
-                timer={activeTimer}
-                onUpdate={updateTimer}
-                onDelete={deleteTimer}
-                onFinish={handleTimerFinish}
-                onEdit={editTimer}
-              />
-              <div className="master-controls">
-                <button
-                  className="master-control-btn"
-                  onClick={goToPreviousTimer}
-                  disabled={activeTimerIndex <= 0}
-                  title="Previous timer">
-                  ⏮
-                </button>
-                <button
-                  className="master-control-btn subtract-time-btn"
-                  onClick={subtract30Seconds}
-                  disabled={!activeTimer}
-                  title="Subtract 30 seconds">
-                  -30
-                </button>
-                <button
-                  className="master-control-btn play-pause-btn"
-                  onClick={togglePlayPause}
-                  disabled={!activeTimer}
-                  title={hasRunningTimer ? "Pause" : "Play"}>
-                  {hasRunningTimer ? "⏸" : "▶"}
-                </button>
-                <button
-                  className="master-control-btn add-time-btn"
-                  onClick={add30Seconds}
-                  disabled={!activeTimer}
-                  title="Add 30 seconds">
-                  +30
-                </button>
-                <button
-                  className="master-control-btn"
-                  onClick={goToNextTimer}
-                  disabled={activeTimerIndex >= timers.length - 1}
-                  title="Next timer">
-                  ⏭
-                </button>
-              </div>
-            </div>
-          )}
+          <ActiveTimer
+            activeTimer={activeTimer}
+            activeTimerIndex={activeTimerIndex}
+            timersLength={timers.length}
+            hasRunningTimer={hasRunningTimer}
+            onUpdate={updateTimer}
+            onFinish={handleTimerFinish}
+            onGoToPrevious={goToPreviousTimer}
+            onGoToNext={goToNextTimer}
+            onTogglePlayPause={togglePlayPause}
+            onAdd30Seconds={add30Seconds}
+            onSubtract30Seconds={subtract30Seconds}
+          />
 
           {timers.length > 0 && (
             <div className="up-next-section">
@@ -1502,21 +1468,19 @@ function App() {
         </div>
       )}
 
-      {showAIRoomModal && (
-        <AIPromptModal
-          type="room"
-          onClose={() => setShowAIRoomModal(false)}
-          onGenerate={handleGenerateTimerRoom}
-        />
-      )}
+      <AIPromptSheet
+        open={showAIRoomModal}
+        onOpenChange={setShowAIRoomModal}
+        type="room"
+        onGenerate={handleGenerateTimerRoom}
+      />
 
-      {showAITimerModal && (
-        <AIPromptModal
-          type="edit"
-          onClose={() => setShowAITimerModal(false)}
-          onGenerate={handleEditRoomWithAI}
-        />
-      )}
+      <AIPromptSheet
+        open={showAITimerModal}
+        onOpenChange={setShowAITimerModal}
+        type="edit"
+        onGenerate={handleEditRoomWithAI}
+      />
 
       {showUndoNotification && undoState && (
         <div className="undo-notification">
@@ -1561,6 +1525,7 @@ function App() {
           </div>
         </div>
       )}
+      <Toaster />
     </div>
   );
 }
